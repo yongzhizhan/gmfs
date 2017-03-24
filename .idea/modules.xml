@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/cache/cache.iml" filepath="$PROJECT_DIR$/cache/cache.iml" />
       <module fileurl="file://$PROJECT_DIR$/directory/directory.iml" filepath="$PROJECT_DIR$/directory/directory.iml" />
       <module fileurl="file://$PROJECT_DIR$/dubbointerface/dubbointerface.iml" filepath="$PROJECT_DIR$/dubbointerface/dubbointerface.iml" />
       <module fileurl="file://$PROJECT_DIR$/gmfs.iml" filepath="$PROJECT_DIR$/gmfs.iml" />

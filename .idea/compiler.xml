@@ -16,6 +16,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="cache" />
         <module name="directory" />
         <module name="dubbointerface" />
         <module name="reporter" />
@@ -24,6 +25,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="cache" target="1.8" />
       <module name="directory" target="1.8" />
       <module name="dubbointerface" target="1.8" />
       <module name="gmfs" target="1.8" />
