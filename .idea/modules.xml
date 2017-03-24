@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/directory/directory.iml" filepath="$PROJECT_DIR$/directory/directory.iml" />
+      <module fileurl="file://$PROJECT_DIR$/dubbointerface/dubbointerface.iml" filepath="$PROJECT_DIR$/dubbointerface/dubbointerface.iml" />
+      <module fileurl="file://$PROJECT_DIR$/gmfs.iml" filepath="$PROJECT_DIR$/gmfs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/reporter/reporter.iml" filepath="$PROJECT_DIR$/reporter/reporter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/store/store.iml" filepath="$PROJECT_DIR$/store/store.iml" />
+      <module fileurl="file://$PROJECT_DIR$/utils/utils.iml" filepath="$PROJECT_DIR$/utils/utils.iml" />
+    </modules>
+  </component>
+</project>

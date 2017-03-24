@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <wildcardResourcePatterns>
+      <entry name="!?*.java" />
+      <entry name="!?*.form" />
+      <entry name="!?*.class" />
+      <entry name="!?*.groovy" />
+      <entry name="!?*.scala" />
+      <entry name="!?*.flex" />
+      <entry name="!?*.kt" />
+      <entry name="!?*.clj" />
+    </wildcardResourcePatterns>
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="directory" />
+        <module name="dubbointerface" />
+        <module name="reporter" />
+        <module name="store" />
+        <module name="utils" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="directory" target="1.8" />
+      <module name="dubbointerface" target="1.8" />
+      <module name="gmfs" target="1.8" />
+      <module name="reporter" target="1.8" />
+      <module name="store" target="1.8" />
+      <module name="utils" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
