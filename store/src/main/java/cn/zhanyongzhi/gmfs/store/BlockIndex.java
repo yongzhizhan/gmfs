@@ -3,14 +3,14 @@ package cn.zhanyongzhi.gmfs.store;
 import struct.StructClass;
 import struct.StructField;
 
-/**
- * 数据块，用来作为最底层分块
- */
 @StructClass
-public class Block {
+public class BlockIndex {
     @StructField(order = 0)
-    public byte[] magicNumber = "GMFS".getBytes();
+    public int offset;
 
     @StructField(order = 1)
     public int dataLen;
+
+    @StructField(order = 2)
+    public long checksum;
 }

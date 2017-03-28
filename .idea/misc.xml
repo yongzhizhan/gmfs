@@ -10,9 +10,4 @@
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_6" default="false" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
-  <component name="SvnConfiguration">
-    <configuration>C:\Users\AtomView\AppData\Roaming\Subversion</configuration>
-    <option name="runUnderTerminal" value="true" />
-    <option name="sshExecutablePath" value="sv" />
-  </component>
 </project>
