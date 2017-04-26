@@ -23,11 +23,12 @@ public class Block {
     private long checkSum;
     private byte[] data;
 
-    public void loadFromFile(RandomAccessFile superBlockFile, int blockId) throws StoreException, IOException {
-        this.blockId = blockId;
+    public static Block loadFromFile(RandomAccessFile superBlockFile, int blockId) throws StoreException, IOException {
+        Block block = new Block();
+        block.setBlockId(blockId);
 
-        int headInfoOffset = getHeaderInfoSize();
-        long blockOffset = getBlockOffset(blockId);
+        int headInfoOffset = block.getHeaderInfoSize();
+        long blockOffset = block.getBlockOffset(blockId);
 
         //load data length
         long dataLenOffset = blockOffset + headInfoOffset - 4;
@@ -55,7 +56,12 @@ public class Block {
             throw new StoreException("data checksum invalid");
         }
 
+        //set info
+        block.setCheckSum(checksum);
+        block.setData(data);
 
+
+        return block;
     }
 
     public int writeToFile(FileChannel superBlockFileChannel) throws IOException {
