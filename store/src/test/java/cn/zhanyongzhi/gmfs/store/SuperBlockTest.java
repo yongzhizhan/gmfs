@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class SuperBlockTest {
-    SuperBlock superBlock;
+    SuperBlock_ superBlock;
 
     @Before
     public void setup() throws IOException {
@@ -17,7 +17,7 @@ public class SuperBlockTest {
         superBlockFile.delete();
         superBlockFile.createNewFile();
 
-        superBlock = new SuperBlock(superBlockFile);
+        superBlock = new SuperBlock_(superBlockFile);
     }
 
     @After
@@ -32,8 +32,4 @@ public class SuperBlockTest {
         superBlock.append(inputStream, data.length);
     }
 
-    @Test
-    public void test1KBlock(){
-        //
-    }
 }

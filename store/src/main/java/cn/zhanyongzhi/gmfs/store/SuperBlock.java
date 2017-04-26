@@ -1,191 +1,120 @@
 package cn.zhanyongzhi.gmfs.store;
 
-import cn.zhanyongzhi.gmfs.store.leveldb.KeyValueDB;
 import cn.zhanyongzhi.gmfs.store.utils.Utils;
-import cn.zhanyongzhi.gmfs.store.utils.lock.AutoLocker;
 import org.apache.log4j.Logger;
-import struct.JavaStruct;
-import struct.StructException;
 
 import java.io.*;
-import java.util.concurrent.locks.ReentrantLock;
+import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
 
-/**
- * 大量的小文件，会增加磁盘的负担，也增加directory索引的难度，通过使用超级块，磁盘索引的数量会大大减少，directory只需要
- * 维护好超级块的信息，就可以了，大大减少文件的数量。
- * 1. 当故障出现时，超级块会变为只读，需要外部命令
- * 2. 最大写入文件大小64M
- * 3. super block 的大小为2^32 * 8 字节
- */
 public class SuperBlock implements Closeable {
-    private static Logger logger = Logger.getLogger(SuperBlock.class.getName());
-    private static int paddingSize = 8;
+    private static Logger logger = Logger.getLogger(SuperBlock.class);
+    private static final long maxSuperBlockSize = 64 * Utils.Size1G;
 
-    private File superBlockFile;
-    private OutputStream outputStream;
-    private RandomAccessFile randomAccessFile;
+    private int superBlockId;
+    private int blockCount;
+    private long writeByteCount;
+    private boolean readOnly;
+    private boolean opened;
 
-    private int appendIndex = 0;
-    private boolean isReadOnly = false;
+    private RandomAccessFile superBlockFile;
 
-    private KeyValueDB keyValueDB;
+    public SuperBlock(){
+        readOnly = false;
+        opened = false;
+    }
 
-    public SuperBlock(File superBlockFile) throws IOException {
-        this.superBlockFile = superBlockFile;
+    public boolean open(int superBlockId, File dataFile) throws IOException {
+        if(true == isOpened())
+            return false;
 
-        keyValueDB = new KeyValueDB("test");
+        this.superBlockId = superBlockId;
+        superBlockFile = new RandomAccessFile(dataFile, "rw");
+        blockCount = 0;
+        writeByteCount = 0;
 
-        outputStream = new FileOutputStream(superBlockFile, true);
-        randomAccessFile = new RandomAccessFile(superBlockFile, "r");
+        //check file
 
-        //File size
-        long fileSize = superBlockFile.length();
+        opened = true;
+        return true;
+    }
 
-        //calc the index, start at 0
-        appendIndex = (int) (fileSize / paddingSize);
+    public Block addBlock(byte[] data) throws StoreException {
+        if(false == isOpened())
+            throw new StoreException("file not opened");
 
-        //when the size is 32G,the superblock will became readonly
-        if(32 * Utils.Size1G <= fileSize){
-            isReadOnly = true;
+        if(isReadOnly())
+            throw new StoreException("file read only");
+
+        Block block = new Block();
+        block.setBlockId(block.getBlockId(writeByteCount));
+        block.setData(data);
+
+        //magic + blockid + datalen + data + checksum
+        int writeSize = block.getWriteSize();
+        int incSize = block.getPackIncSize();
+
+        int totalWriteSize = writeSize + incSize;
+
+        if(writeByteCount + totalWriteSize > data.length)
+            throw new StoreException("super block size not enough");
+
+        CRC32 crc32 = new CRC32();
+        crc32.update(data);
+
+        //upadate checksum
+        block.setCheckSum(crc32.getValue());
+
+        try {
+            //not close
+            FileChannel fileChannel = superBlockFile.getChannel();
+            block.writeToFile(fileChannel);
+        } catch (IOException e) {
+            readOnly = true;
+
+            logger.error("append failed", e);
+            throw new StoreException("file append ioexception.");
         }
 
-        //如果检查失败，就只读，保护数据
-        if(false == isReadOnly)
-            isReadOnly = (false == healthCheckBlock());
+        writeByteCount += totalWriteSize;
+        blockCount++;
+
+        return block;
+    }
+
+    public Block read(int blockId) throws StoreException {
+        if(false == isOpened())
+            throw new StoreException("file not opened");
+
+        Block block = new Block();
+        try {
+            block.loadFromFile(superBlockFile, blockId);
+        }catch (Exception e){
+            logger.error(String.format("read blockid:%d failed.", blockId), e);
+            throw new StoreException("read block failed.");
+        }
+
+        return block;
+    }
+
+    public boolean delete(int blockId){
+        return false;
     }
 
     @Override
     public void close() throws IOException {
-        outputStream.close();
-        randomAccessFile.close();
-        keyValueDB.close();
+        if(false == isOpened())
+            return;
+
+        superBlockFile.close();
+        opened = false;
     }
 
-    public boolean healthCheckBlock(){
-        return true;
+    public boolean isReadOnly() {
+        return readOnly;
     }
 
-    public long append(InputStream dataStream, int dataSize) throws StoreException {
-        if(isReadOnly)
-            throw new StoreException("super block is read only");
-
-        Block block = new Block();
-        block.dataLen = dataSize;
-
-        int currentIndex;
-        try(AutoLocker locker = new AutoLocker(new ReentrantLock())) {
-            try {
-                //write base info
-                byte[] blockData = JavaStruct.pack(block);
-                outputStream.write(blockData);
-
-                byte[] appendBuffer = new byte[4096];
-                int readSize = 0;
-
-                CRC32 crc32 = new CRC32();
-
-                while (-1 != (readSize = dataStream.read(appendBuffer, 0, appendBuffer.length))) {
-                    outputStream.write(appendBuffer, 0, readSize);
-                    crc32.update(appendBuffer, 0, readSize);
-                }
-
-                //get checksum, append checksum value
-                long checksum = crc32.getValue();
-
-                outputStream.write(Utils.longToByteArray(checksum));
-
-                //padding block
-                int skip = ((blockData.length + paddingSize - 1) / paddingSize) * paddingSize - blockData.length;
-                for (int i = 0; i < skip; i++) {
-                    outputStream.write((byte) 0xC);
-                }
-
-                currentIndex = appendIndex;
-                appendIndex++;
-
-                BlockIndex blockIndex = new BlockIndex();
-                blockIndex.offset = currentIndex;
-                blockIndex.dataLen = block.dataLen;
-                blockIndex.checksum = checksum;
-
-                keyValueDB.put(currentIndex, JavaStruct.pack(blockIndex));
-            } catch (Exception e) {
-                logger.error("append failed.", e);
-                throw new StoreException("append failed.");
-            }
-        }
-
-        return currentIndex;
-    }
-
-    private long getCheckSum(byte[] data){
-        CRC32 crc32 = new CRC32();
-        crc32.update(data);
-        return crc32.getValue();
-    }
-
-    public BlockReader getBlockReader(int key) throws StoreException {
-        BlockIndex blockIndex = new BlockIndex();
-
-        try(AutoLocker locker = new AutoLocker(new ReentrantLock())){
-            byte[] data = keyValueDB.get(key);
-            if(null == data)
-                return null;
-
-            JavaStruct.unpack(blockIndex, data);
-            blockIndex = new BlockIndex();
-        } catch (StructException e) {
-            logger.error("struct parse failed.", e);
-            throw new StoreException("struct parse failed.");
-        }
-
-        InputStream inputStream = null;
-
-        try {
-            inputStream = new FileInputStream(superBlockFile);
-        } catch (FileNotFoundException e) {
-            logger.error("create input stream failed", e);
-            throw new StoreException("create input stream failed");
-        }
-
-        return new BlockReader(blockIndex, inputStream);
-    }
-
-    public boolean remove(int key) throws StoreException {
-        if(isReadOnly)
-            return false;
-
-        try(AutoLocker locker = new AutoLocker(new ReentrantLock())) {
-            byte[] data = keyValueDB.get(key);
-            if(null == data)
-                return false;
-
-            BlockIndex blockIndex = new BlockIndex();
-            JavaStruct.unpack(blockIndex, data);
-            blockIndex = new BlockIndex();
-
-            keyValueDB.delete(key);
-
-            //TODO:写入-1表示已经删除,4表示maginc number
-            randomAccessFile.seek(blockIndex.offset + 4);
-            randomAccessFile.write(Utils.intToByteArray(-1));
-        } catch (StructException e) {
-            logger.error("struct parse failed.", e);
-            throw new StoreException("struct parse failed.");
-        } catch (IOException e) {
-            logger.error("delete file failed.");
-            throw new StoreException("delete file failed.");
-        }
-
-        return true;
-    }
-
-    public boolean isReadonly(){
-        return isReadOnly;
-    }
-
-    public void setReadOnly(boolean isReadOnly){
-        this.isReadOnly = isReadOnly;
+    public boolean isOpened() {
+        return opened;
     }
 }
